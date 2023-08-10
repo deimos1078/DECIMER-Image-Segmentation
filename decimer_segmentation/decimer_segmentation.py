@@ -119,7 +119,7 @@ def segment_chemical_structures(
 def sort_segments_bboxes(
         segments : List[np.array], 
         bboxes : List[tuple[int, int, int, int]], #(y0, x0, y1, x1)
-        same_row_pixel_threshold = 50
+        same_row_pctg_threshold = 0.01
         ) -> Tuple[np.array, List[tuple[int, int, int, int]]]:
     """
     Sorts segments and bounding boxes in "reading order"
@@ -140,7 +140,7 @@ def sort_segments_bboxes(
     rows = []
     current_row = [sorted_bboxes[0]]
     for bbox in sorted_bboxes[1:]:
-        if abs(bbox[0] - current_row[-1][0]) < same_row_pixel_threshold:  # You can adjust this threshold as needed
+        if abs(bbox[0] - current_row[-1][0]) < same_row_pctg_threshold:  # You can adjust this threshold as needed
             current_row.append(bbox)
         else:
             rows.append(sorted(current_row, key=lambda x: x[1]))  # Sort by x-coordinate within each row
@@ -245,6 +245,14 @@ def apply_masks(image: np.array, masks: np.array) -> List[np.array]:
     return segmented_images, bboxes
 
 
+def scale_bbox(bbox, max_x, max_y):
+    return (
+        bbox[0] / max_y,  
+        bbox[1] / max_x, 
+        bbox[2] / max_y,
+        bbox[3] / max_x
+    )
+
 def apply_mask(image: np.array, mask: np.array) -> np.array:
     """
     This function takes an image and a mask for this image (shape: (h, w))
@@ -275,7 +283,7 @@ def apply_mask(image: np.array, mask: np.array) -> np.array:
     trans_mask = background[:, :, 3] == 0
     background[trans_mask] = [255, 255, 255, 255]
     segmented_image = cv2.cvtColor(background, cv2.COLOR_BGRA2BGR)
-    return segmented_image, (y, x, y + h, x + w)
+    return segmented_image, scale_bbox((y, x, y + h, x + w), image.shape[1], image.shape[0])
 
 
 def get_masked_image(image: np.array, mask: np.array) -> np.array:
